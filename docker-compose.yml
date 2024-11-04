@@ -109,5 +109,41 @@ services:
     networks:
       - mynetwork
 
+  appointment-database:
+    container_name: appointment-database
+    image: postgres:latest
+    hostname: appointment-database
+    restart: always
+    ports:
+      - 5437:5432
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: appointment-db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mynetwork
+
+  appointment_service:
+    container_name: appointment_service
+    build:
+      context: ./appointment_service
+    ports:
+      - "7000:7000"
+    depends_on:
+      appointment-database:
+        condition: service_healthy
+    restart: always
+    environment:
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_HOST=appointment-database
+      - DB_NAME=appointment-db
+    networks:
+      - mynetwork
+
 networks:
   mynetwork:

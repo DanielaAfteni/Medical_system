@@ -13,7 +13,7 @@ RUN pip install -r requirements.txt
 # COPY requirements.txt .
 # RUN pip install --trusted-host pypi.python.org -r requirements.txt
 
-EXPOSE 7000
+EXPOSE 8000
 
 # Define the command to run your application
 CMD ["python", "billing_service.py"]

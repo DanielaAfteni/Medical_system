@@ -13,7 +13,7 @@ RUN pip install -r requirements.txt
 # COPY requirements.txt .
 # RUN pip install --trusted-host pypi.python.org -r requirements.txt
 
-EXPOSE 8000
+EXPOSE 7000
 
 # Define the command to run your application
-CMD ["python", "appointment_scheduling_service.py"]
+CMD ["python", "appointment_service.py"]
