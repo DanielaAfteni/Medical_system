@@ -1,0 +1,113 @@
+version: "3.9"  # Use a more recent version of Docker Compose
+
+services:
+  patient-database:
+    container_name: patient-database
+    image: postgres:latest
+    hostname: patient-database
+    restart: always
+    ports:
+      - 5434:5432
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: patient-db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mynetwork
+
+  patient_service:
+    container_name: patient_service
+    build:
+      context: ./patient_service
+    ports:
+      - "4000:4000"
+    depends_on:
+      patient-database:
+        condition: service_healthy  # Wait until the database is healthy
+    restart: always
+    environment:
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_HOST=patient-database
+      - DB_NAME=patient-db
+    networks:
+      - mynetwork
+
+  doctor-database:
+    container_name: doctor-database
+    image: postgres:latest
+    hostname: doctor-database
+    restart: always
+    ports:
+      - 5435:5432
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: doctor-db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mynetwork
+
+  doctor_service:
+    container_name: doctor_service
+    build:
+      context: ./doctor_service
+    ports:
+      - "5000:5000"
+    depends_on:
+      doctor-database:
+        condition: service_healthy
+    restart: always
+    environment:
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_HOST=doctor-database
+      - DB_NAME=doctor-db
+    networks:
+      - mynetwork
+
+  medical-record-database:
+    container_name: medical-record-database
+    image: postgres:latest
+    hostname: medical-record-database
+    restart: always
+    ports:
+      - 5436:5432
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: medical-record-db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mynetwork
+
+  medical_record_service:
+    container_name: medical_record_service
+    build:
+      context: ./medical_record_service
+    ports:
+      - "6000:6000"
+    depends_on:
+      medical-record-database:
+        condition: service_healthy
+    restart: always
+    environment:
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_HOST=medical-record-database
+      - DB_NAME=medical-record-db
+    networks:
+      - mynetwork
+
+networks:
+  mynetwork:
