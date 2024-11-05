@@ -191,5 +191,20 @@ services:
     networks:
       - mynetwork
 
+  gateway_service:
+    container_name: gateway_service
+    build:
+      context: ./gateway_service
+    ports:
+      - "8080:8080"
+    depends_on:
+      - patient_service
+      - doctor_service
+      - medical_record_service
+      - appointment_service
+      - billing_service
+    networks:
+      - mynetwork
+
 networks:
   mynetwork:
