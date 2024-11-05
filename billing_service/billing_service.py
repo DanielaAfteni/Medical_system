@@ -3,6 +3,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
 import logging
+import requests
 
 app = Flask(__name__)
 
@@ -51,6 +52,7 @@ def initialize_database():
                 patient_id INTEGER NOT NULL,
                 appointment_id INTEGER NOT NULL,
                 amount DECIMAL(10, 2) NOT NULL,
+                email VARCHAR(255) NOT NULL,
                 status VARCHAR(50) DEFAULT 'Pending',
                 issued_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 paid_date TIMESTAMP
@@ -63,6 +65,7 @@ def initialize_database():
     finally:
         cursor.close()
         conn.close()
+
 
 # Initialize the database when the service starts
 initialize_database()
@@ -93,9 +96,10 @@ def create_bill():
     patient_id = data.get('patient_id')
     appointment_id = data.get('appointment_id')
     amount = data.get('amount')
+    email = data.get('email')
 
-    if not patient_id or not appointment_id or amount is None:
-        return jsonify({"error": "Patient ID, Appointment ID, and Amount are required"}), 400
+    if not patient_id or not appointment_id or amount is None or not email:
+        return jsonify({"error": "Patient ID, Appointment ID, Amount, and Email are required"}), 400
 
     conn = get_db_connection()
     if not conn:
@@ -104,12 +108,15 @@ def create_bill():
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO bills (patient_id, appointment_id, amount) VALUES (%s, %s, %s) RETURNING id;",
-            (patient_id, appointment_id, amount)
+            "INSERT INTO bills (patient_id, appointment_id, amount, email) VALUES (%s, %s, %s, %s) RETURNING id;",
+            (patient_id, appointment_id, amount, email)
         )
         bill_id = cursor.fetchone()['id']
         conn.commit()
-        logger.info(f"Bill {bill_id} added: patient_id = {patient_id}, appointment_id = {appointment_id}, amount = {amount}")
+        logger.info(f"Bill {bill_id} added: patient_id = {patient_id}, appointment_id = {appointment_id}, amount = {amount}, email = {email}")
+        # Send a notification after creating the bill
+        send_notification(email, amount)
+
         return jsonify({"id": bill_id, "message": "Bill created successfully"}), 201
     except Exception as e:
         logger.error(f"Error creating bill: {e}")
@@ -173,6 +180,29 @@ def delete_bill(bill_id):
     finally:
         cursor.close()
         conn.close()
+
+def send_notification(email, amount):
+    try:
+        # The URL for the Notification Service
+        url = "http://notification_service:8001/send-notification"
+
+        # The payload to be sent
+        payload = {
+            "email": email,
+            "amount": amount
+        }
+
+        # Making a POST request to the Notification Service
+        response = requests.post(url, json=payload)
+
+        # Check the response status
+        if response.status_code == 200:
+            logger.info(f"Notification successfully sent to {email}: 'You have a pending bill of amount {amount}.'")
+        else:
+            logger.error(f"Failed to send notification. Status code: {response.status_code}, Response: {response.text}")
+
+    except Exception as e:
+        logger.error(f"Error sending notification: {e}")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)
